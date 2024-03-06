@@ -2,6 +2,10 @@
 #include <GLFW/glfw3.h>
 #include "WindowManager.h"
 #include <iostream>
+#include "VAO.h"
+#include "VBO.h"
+#include "EBO.h"
+#include "Shader.h"
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -9,15 +13,21 @@ const unsigned int SCR_HEIGHT = 600;
 
 GLFWwindow* initGLFW()
 {
+    // Init GLFW
     glfwInit();
+
+    // Tell GLFW what version we are using
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+
+    // Tell GLFW we are using CORE profile
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
+    // create a GLFW window
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL)
     {
@@ -25,12 +35,16 @@ GLFWwindow* initGLFW()
         glfwTerminate();
         return NULL;
     }
+    // Introduce the window into the current context
     glfwMakeContextCurrent(window);
+
+    // Callback function when window sizes change
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     return window;
 }
 
+// glad: intialze Glad
 bool initGLAD()
 {
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -59,31 +73,79 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-void renderLoop(GLFWwindow* window, unsigned int shaderProgram, unsigned int VAO)
+void renderLoop(GLFWwindow* window)
 {
+    
+    GLfloat vertices[] =
+    { //               COORDINATES                  /     COLORS           //
+        -0.5f, -0.5f * float(sqrt(3)) * 1 / 3, 0.0f,     0.8f, 0.3f,  0.02f, // Lower left corner
+         0.5f, -0.5f * float(sqrt(3)) * 1 / 3, 0.0f,     0.8f, 0.3f,  0.02f, // Lower right corner
+         0.0f,  0.5f * float(sqrt(3)) * 2 / 3, 0.0f,     1.0f, 0.6f,  0.32f, // Upper corner
+        -0.25f, 0.5f * float(sqrt(3)) * 1 / 6, 0.0f,     0.9f, 0.45f, 0.17f, // Inner left
+         0.25f, 0.5f * float(sqrt(3)) * 1 / 6, 0.0f,     0.9f, 0.45f, 0.17f, // Inner right
+         0.0f, -0.5f * float(sqrt(3)) * 1 / 3, 0.0f,     0.8f, 0.3f,  0.02f  // Inner down
+    };
+
+    // Indices for vertices order
+    GLuint indices[] =
+    {
+        0, 3, 5, // Lower left triangle
+        3, 2, 4, // Lower right triangle
+        5, 4, 1 // Upper triangle
+    };
+
+    Shader shaderProgram("default.vert", "default.frag");
+
+    VAO VAO1;
+    VAO1.Bind();
+
+    VBO VBO1(vertices, sizeof(vertices));
+    EBO EBO1(indices, sizeof(indices));
+
+    VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
+    VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    VAO1.Unbind();
+    VBO1.Unbind();
+    EBO1.Unbind();
+
+    GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
     {
         // input
-        // -----
+        //-------
         processInput(window);
 
         // render
-        // ------
+        //--------
+        // Specify the viewport of OpenGL in the window
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        // CLean the back buffer and assign the new color
         glClear(GL_COLOR_BUFFER_BIT);
+        
+        // tell opengl what shader program to use
+        shaderProgram.Activate();
 
-        // draw our first triangle
-        glUseProgram(shaderProgram);
-        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-        //glDrawArrays(GL_TRIANGLES, 0, 6);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        // glBindVertexArray(0); // no need to unbind it every time 
+        glUniform1f(uniID, 0.5f);
+        VAO1.Bind();
+
+        // draw the triangles
+        glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
+
+        // Take care of all GLFW events
         glfwPollEvents();
     }
+
+    VAO1.Delete();
+    VBO1.Delete();
+    EBO1.Delete();
+    shaderProgram.Delete();
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
 }
