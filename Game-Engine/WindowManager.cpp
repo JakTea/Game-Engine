@@ -29,7 +29,6 @@ GLfloat vertices[] =
      0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	2.5f, 5.0f
 };
 
-
 GLuint indices[] =
 {
     0, 1, 2,
@@ -130,14 +129,7 @@ void renderLoop(GLFWwindow* window)
     // Gets ID of uniform called "scale"
     GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
 
-    /*
-    * I'm doing this relative path thing in order to centralize all the resources into one folder and not
-    * duplicate them between tutorial folders. You can just copy paste the resources from the 'Resources'
-    * folder and then give a relative path from this folder to whatever resource you want to get to.
-    * Also note that this requires C++17, so go to Project Properties, C/C++, Language, and select C++17
-    */
     std::string parentDir = (fs::current_path().fs::path::parent_path()).string();
-    // std::string texPath = "/Resources/Textures/";
 
     // Texture
     Texture brickTex((parentDir + "/brick.png").c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
@@ -158,9 +150,16 @@ void renderLoop(GLFWwindow* window)
         // Specify the color of the background
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         // Clean the back buffer and assign the new color to it
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // Tell OpenGL which Shader Program we want to use
         shaderProgram.Activate();
+
+        double crntTime = glfwGetTime();
+        if (crntTime - prevTime >= 1 / 60)
+        {
+            rotation += 0.5f;
+            prevTime = crntTime;
+        }
 
         // Initializes matrices so they are not the null matrix
         glm::mat4 model = glm::mat4(1.0f);
@@ -171,7 +170,7 @@ void renderLoop(GLFWwindow* window)
         model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
         view = glm::translate(view, glm::vec3(0.0f, -0.5f, -2.0f));
         proj = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / SCR_HEIGHT, 0.1f, 100.0f);
-
+        
         // Outputs the matrices into the Vertex Shader
         int modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));

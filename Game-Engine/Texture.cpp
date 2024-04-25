@@ -17,7 +17,7 @@ Texture::Texture(const char* image, GLenum texType, GLenum slot, GLenum format, 
 			<< "unable to load image: "
 			<< stbi_failure_reason()
 			<< "\n";
-		//throw;
+		throw std::runtime_error("Failed to load image");
 	}
 
 	// Generates an OpenGL texture object
